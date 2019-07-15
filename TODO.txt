@@ -1,0 +1,43 @@
+0. git
+
+I. making sathad.py work (well) in python
+    A. packages/high level stuff:
+        1. [done?] rational numbers
+        2. [done?] polytope
+        3. [keep] matrix
+        4. boolean formulas
+        5. [done?] everything else sage does automatically!
+
+    B. handling files from the terminal:
+        1. Sloane files (n<=28)
+        2. handle hex format for n=32
+        3. write cnf files rather than storing too many huge lists of tuples
+    
+    C. optimization:
+        1. [done in sage] can the memoized CNF of the solution boolean formula simplify further? 
+            - [probably not] should we write them to a file instead?
+            - [let Glucose handle it] do this in python or Glucose?
+        2. does adding variables for *all* edges slows the program down?
+        
+    D. algorithm design:
+        1. should we be inverting along rows or columns? 
+        2. [HARD] filtering down by further diagonalization-equivalence
+
+
+II. program communication
+    A. Glucose (C++):
+        1. get *all* solutions
+            - addClause( -sol_1 -sol_2 ... -sol_{K-1} ) for every new solution sol_1 ... sol_N
+            concerning a KxK Hadamard matrix
+        2. certify that original cnf + new clauses is UNSAT
+
+    B. nauty (C):
+        1. get the g6 strings automatically
+            - see see I.C.2
+
+III. analyzing code output
+    A. motivating questions:
+        1. when do H, H' diagonalize the same graphs?
+        2. are all Hadamard-diagonalizable graphs Abelian Cayley graphs? 
+        3. if G is Had.-diag'able, why can it decompose into non-Had.-diag'able graphs? 
+
