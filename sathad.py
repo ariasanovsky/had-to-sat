@@ -1,3 +1,6 @@
+##### Licensed under the GNU General Public License (Version 3.0)
+##### See LICENSE for more details.  
+
 from itertools import combinations    
 from src import *
 from numpy import matrix
