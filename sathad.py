@@ -13,6 +13,12 @@ VERBOSE_OR = False
 VERBOSE_SOLS = True
 TIDYING = False
 
+TO_HADS = "./hads/"
+TO_CNFS = "./cnfs/"
+TO_CERTS = "./certs/"
+
+TO_SLOANE = TO_HADS + "sloane/"
+TO_KTR = TO_HADS + "ktr/"
 
 def diagonal_matrix(x):
     m = len(x)
@@ -564,7 +570,7 @@ def CNF_to_tup_list(form):
 
 #takes in a list of Hadamard matrices and returns a list of CNF tuples
 #the CNF tuples encode the diagonalization problem as a SAT problem
-def hads_to_tups(hads, all_columns = True, get_cheats = False, get_matrices = False, get_tups = False):
+def hads_to_tups(hads, all_columns = True, get_cheats = False, get_matrices = False, get_tups = False, had_type = 'sloane'):
     
     
     #entries L_H are lists corresponding to each hadamard matrix H
@@ -581,49 +587,79 @@ def hads_to_tups(hads, all_columns = True, get_cheats = False, get_matrices = Fa
     if get_tups:
         master_tup_lists = []
     
+    
+    
+    
+    
+    
+    if had_type == 'sloane':
+        sgn_to_num = lambda x: 1 if x=='+' else -1
+    
+    if had_type == 'ktr':
+        translate = {'0':[-1,-1,-1,-1], '1':[-1,-1,-1, 1], '2':[-1,-1, 1,-1], '3':[-1,-1, 1, 1], '4':[-1, 1,-1,-1], '5':[-1, 1,-1, 1], '6':[-1, 1, 1,-1], '7':[-1, 1, 1, 1], '8':[ 1,-1,-1,-1], '9':[ 1,-1,-1, 1], 'A':[ 1,-1, 1,-1], 'B':[ 1,-1, 1, 1], 'C':[ 1, 1,-1,-1], 'D':[ 1, 1,-1, 1], 'E':[ 1, 1, 1,-1], 'F':[ 1, 1, 1, 1]}
+        myhad = hads[0]
+        infile = open(TO_KTR + myhad, "r")
+        infile.readline()
+        infile.readline()
+        infile.readline()
+        infile.readline()
+        nchars = 288 #32 rows, 8 hex chars, one \n
+        chunk = infile.read(nchars)
+        infile.readline()
+        infile.readline()
+        infile.readline()
+    
     #master list which takes a row constraint multiset and 
     #stores the tup list associated with it, in terms of dummy variables
     tup_map = dict()
-    
-    sgn_to_num = lambda x: 1 if x=='+' else -1
-    
     h_ctr = 0
     
-    for myhad in hads:
+    c = 0
+    
+    while c < len(hads):           #for myhad in hads:
+        if had_type == 'sloane':
+            myhad = hads[c]
+            infile = open(TO_SLOANE + myhad, "r") 
+            myh = []
+            for line in infile:
+                if len(line)>0 and line[0] in ['+', '-']:
+                    #print 'the line:', line
+                    myh.append([sgn_to_num(ent) for ent in line if ent in ['+', '-']])
+            infile.close()
+            myh = matrix(myh)
         
         
+        if had_type == 'ktr':
+            myh = []
+            if not chunk:
+                myhad = hads[c]
+                infile = open(TO_KTR + myhad, "r")
+                infile.readline()
+                infile.readline()
+                infile.readline()
+                infile.readline()
+                chunk = infile.read(nchars)
+                infile.readline()
+                infile.readline()
+                infile.readline()
+            
+            for line in chunk.splitlines():
+                currline = []
+                for s in line:
+                    currline.extend(translate[s])
+                    #print 'extending by', translate[s], '...'
+                myh.append(currline)
+            #print 'ended with length', len(myh)
+            
+            myh = matrix(myh)
         
-        #for the Sloane format (+-)
-        infile = open(myhad,"r") 
-        myh = []
-        for line in infile:
-            if len(line)>0 and line[0] in ['+', '-']:
-                #print 'the line:', line
-                myh.append([sgn_to_num(c) for c in line if c in ['+', '-']])
-        infile.close()
-        myh = matrix(myh)
+        if had_type == 'sage':
+            myh = hadamard_matrix_www(myhad)
+        
+        
         K = myh.shape[0]
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        #for the sage function which gets from Sloane's site
-        #myh = hadamard_matrix_www(myhad)
-        #K = myh.dimensions()[0]
-        
-        
-        
-        #JK = matrix( [[1]*(K-1)]*(K-1) )
-        
         max_col = K-1
+        
         if not all_columns:
             max_col = 0
         
@@ -642,18 +678,12 @@ def hads_to_tups(hads, all_columns = True, get_cheats = False, get_matrices = Fa
         for col in range(max_col+1):#[0. .max_col]:
             if VERBOSE and all_columns:
                 print 'trying column', col, '. . .'
+            
             hh = swap_cols(myh, 0, col)
             
             
-            #print "h has shape:", hh.shape[0], hh.shape[1]
-            #print "and looks like:"
-            
-            #for a in range(hh.shape[0]):
-            #    print [hh[a,b] for b in range(hh.shape[1])]
-            #print 
-            #print 
-            
             #dd = diagonal_matrix( hh.column(0))
+            
             
             dd = diagonal_matrix( [hh[j, 0] for j in range(K)])
             
@@ -810,7 +840,7 @@ def hads_to_tups(hads, all_columns = True, get_cheats = False, get_matrices = Fa
                                     curr_clauses.append(new_line)
                                     num_clauses+=1
                                     strs=" ".join(str(x) for x in new_line)
-                                    outfile.write(strs+"\n")
+                                    outfile.write(strs+" 0\n")
 
                             
                             
@@ -846,7 +876,7 @@ def hads_to_tups(hads, all_columns = True, get_cheats = False, get_matrices = Fa
                                     num_clauses+=1
                                     
                                     strs=" ".join(str(x) for x in new_line)
-                                    outfile.write(strs+"\n")
+                                    outfile.write(strs+" 0\n")
 
                                 
                                 
@@ -860,7 +890,7 @@ def hads_to_tups(hads, all_columns = True, get_cheats = False, get_matrices = Fa
                                         for k in range(j+1, mult+1):#[j+1. .mult]:
                                             curr_clauses.append( (-dum_relabel[idums[j]], -dum_relabel[idums[k]]) )
                                             num_clauses+=1
-                                            outfile.write(str(-dum_relabel[idums[j]]) + " " + str(-dum_relabel[idums[k]]) + "\n")
+                                            outfile.write(str(-dum_relabel[idums[j]]) + " " + str(-dum_relabel[idums[k]]) + " 0\n")
                                         
                                         #y_j implies that every j+1 set of x's has a False
                                         for sub in combinations( inds[coe], j+1):
@@ -870,7 +900,7 @@ def hads_to_tups(hads, all_columns = True, get_cheats = False, get_matrices = Fa
                                             curr_clauses.append(tup)
                                             num_clauses+=1
                                             strs=" ".join(str(x) for x in tup)
-                                            outfile.write( strs+"\n" )
+                                            outfile.write( strs+" 0\n" )
                                     
                                     
                                         #y_j implies that every mult-j+1 set of x's has a True
@@ -881,7 +911,7 @@ def hads_to_tups(hads, all_columns = True, get_cheats = False, get_matrices = Fa
                                             curr_clauses.append(tup)
                                             num_clauses+=1
                                             strs=" ".join(str(x) for x in tup)
-                                            outfile.write( strs+"\n" )
+                                            outfile.write( strs+" 0\n" )
 
                                 
             if TIDYING:# or len(curr_clauses)<11000:
@@ -912,7 +942,7 @@ def hads_to_tups(hads, all_columns = True, get_cheats = False, get_matrices = Fa
         with open(outname, "r+") as outfile:
             existing=outfile.read()
             outfile.seek(0) #point to first line
-            outfile.write("new text\n"+existing)
+            outfile.write("p cnf " + str(dummy_ctr) + " " + str(len(curr_clauses)) + "\n"+existing)
         
         
         if get_cheats:
@@ -922,7 +952,18 @@ def hads_to_tups(hads, all_columns = True, get_cheats = False, get_matrices = Fa
             mats.append(curr_mats)
         
         h_ctr += 1
-    
+        if not had_type == 'ktr':
+            c += 1
+        else:
+            chunk = infile.read(nchars)
+            if chunk:
+                infile.readline()
+                infile.readline()
+                infile.readline()
+            else:
+                c += 1
+                infile.close()
+        
     if get_cheats:
         if get_matrices:
             if get_tups:
@@ -958,5 +999,7 @@ def hads_to_tups(hads, all_columns = True, get_cheats = False, get_matrices = Fa
 
 #outs = hads_to_tups(["./hads/had.28." + str(j+1) + ".txt" for j in range(487)], all_columns = False)
 
-outs = hads_to_tups(["./hads/had.32." + hname + ".txt" for hname in  ["pal","syl","t1","t2","t3","t4"] ], all_columns = False)
+#outs = hads_to_tups(["had.32." + hname + ".txt" for hname in  ["pal","syl","t1","t2","t3","t4"] ], all_columns = False)
+
+outs = hads_to_tups(["ktr_test.txt" ], all_columns = False, had_type = 'ktr')
 
