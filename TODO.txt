@@ -11,6 +11,7 @@ I. making sathad.py work (well) in python
     C. optimization:
         1. does adding variables for *all* edges slow the SAT solver down?
         2. memory, matrices, tuple lists
+        3. better cardinality constraints
         
     D. algorithm design:
         1. should we be inverting along rows or columns? 

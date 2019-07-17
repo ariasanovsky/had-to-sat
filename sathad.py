@@ -1,5 +1,6 @@
 ##### Licensed under the GNU General Public License (Version 3.0)
 ##### See LICENSE for more details.  
+##### Written by Alexander W. Neal Riasanovsky.  
 
 from itertools import combinations    
 from src import *
@@ -15,6 +16,7 @@ VERBOSE_LIST = False
 VERBOSE_OR = False
 VERBOSE_SOLS = True
 TIDYING = False
+OLD_CARDINALITY = True
 
 TO_HADS = "./hads/"
 TO_CNFS = "./cnfs/"
@@ -143,11 +145,16 @@ def test_equivalence( tups1, tups2, num_vars, num_tries = 1000 ):
 #only simplifies if it finds clauses c1 c2 where: 
     #c1 = a|b and c2 = a|~b|c
     #generally, c1&c2 = (a|b)&(a|~b|c) <==> (a|b)&(a|c)
-    #if b or c is null, then c1&c2 <==> a
+    #if b or c is the empty formula, then c1&c2 <==> a
 
 #it may assumed that the CNF formula has no tautologicaly clauses
 #i.e., no tuple in old_tups has both i and -i
 def simplify_tup_list(old_tups):
+    
+    #num_simps = 0
+    #num_removals = 0
+    #curr_thresh = 10
+    #num_reboots = 0
     
     irredundants = dict()
     
@@ -163,6 +170,11 @@ def simplify_tup_list(old_tups):
             if i in irredundants:
                 for j in range(i+1, len(old_tups)):#[i+1. .len(old_tups)-1]:
                     if j in irredundants and i in irredundants:
+                        #if num_simps >= curr_thresh:
+                            #print 'num simps, removals:', num_simps, num_removals, "num reboots:", num_reboots
+                            #print 'i,j=', i,j
+                            #curr_thresh = num_simps/100
+                            #curr_thresh = (curr_thresh+1)*100
                         sj = irredundants[j]
                         si = irredundants[i]
                         inters = si.intersection(sj)
@@ -177,12 +189,16 @@ def simplify_tup_list(old_tups):
                                 print si, 'is a subset of', sj
                             dead_ind = irredundants.pop(j)
                             progressing = True
+                            #num_simps += 1
+                            #num_removals += 1
                         else:
                             if len(diffj) == 0:
                                 if VERBOSE_SIMP:
                                     print sj, 'is a subset of', si
                                 dead_ind = irredundants.pop(i)
                                 progressing = True
+                                #num_simps += 1
+                                #num_removals += 1
                             else:
                                 
                                 
@@ -204,6 +220,8 @@ def simplify_tup_list(old_tups):
                                             si.remove(b)
                                             irredundants[i] = si
                                             progressing = True
+                                            #num_simps += 1
+                                            #num_removals += 1
                                         else:
                                             if VERBOSE_SIMP:
                                                 print si, sj, 'are of the form (a|b)&(a|~b|c) <==> (a|b)&(a|c)'
@@ -211,6 +229,7 @@ def simplify_tup_list(old_tups):
                                             sj.remove(-b)
                                             irredundants[j] = sj
                                             progressing = True
+                                            #num_simps += 1
                                 else:
                                     if len(diffj) == 1:
                                         b = list(diffj)[0]
@@ -220,6 +239,8 @@ def simplify_tup_list(old_tups):
                                             si.remove(-b)
                                             irredundants[i] = si
                                             progressing = True
+                                            #num_simps += 1
+        #num_reboots += 1
     new_tups = []
     for i in irredundants:
         new_tups.append( tuple(irredundants[i]) )
@@ -666,7 +687,8 @@ def hads_to_tups(hads, all_columns = True, get_cheats = False, get_matrices = Fa
         if not all_columns:
             max_col = 0
         
-        tup_lists = []
+        if get_tups:
+            tup_lists = []
         
         if get_cheats:
             curr_cheats = []
@@ -703,7 +725,8 @@ def hads_to_tups(hads, all_columns = True, get_cheats = False, get_matrices = Fa
             
             matchings = dict()
             
-            curr_clauses = []
+            if get_tups:
+                curr_clauses = []
             
             num_clauses = 0
             
@@ -840,10 +863,10 @@ def hads_to_tups(hads, all_columns = True, get_cheats = False, get_matrices = Fa
                             with open(outname,"a") as outfile:
                                 for tup in row_clauses:
                                     new_line = tuple([dum_relabel[j] for j in tup])
-                                    curr_clauses.append(new_line)
+                                    if get_tups:
+                                        curr_clauses.append(new_line)
                                     num_clauses+=1
-                                    strs=" ".join(str(x) for x in new_line)
-                                    outfile.write(strs+" 0\n")
+                                    outfile.write(" ".join(str(x) for x in new_line) + " 0\n")
 
                             
                             
@@ -865,61 +888,256 @@ def hads_to_tups(hads, all_columns = True, get_cheats = False, get_matrices = Fa
                                         print 'dummies', idums
                                         print
                                     
+                                    if not OLD_CARDINALITY: 
+                                        #make dummy variables [1 <= j <= k <= mult]:
+                                               #s_{j,k} <==> among first k x's, >= j are true
+                                       
+                                        #make dummy variables [0 <= k <= mult]:
+                                            #y_k <==> exactly k of the x's are true
+                                        
+                                        #to do this, we add the following constraints:
+                                            #base cases for s:
+                                                #(A)    x_0 <==> s_{1,1}
+                                                
+                                                #(B)   s_{1,k+1} <==> (x_k | s_{1,k}) [1 <= k <= mult-1]
+                                                
+                                            #inductive step for s: 
+                                                #NOTE: here, assume s_{j+1,k} is false if j+1 > k
+                                                #(C)  s_{j+1,k+1} <==> (s_{j+1,k} | (s_{j,k} & x_k)) [1 <= j <= k <= mult-1]
+                                                #
+                                                #i.e.,  s_{j+1,k+1} ==> (s_{j+1,k} | (s_{j,k} & x_k))
+                                                #       & s_{j+1,k} ==> s_{j+1,k+1}
+                                                #       & (s_{j,k} & x_k) ==> s_{j+1,k+1}
+                                                #
+                                                #or if j = k:
+                                                #       s_{j+1,k+1} ==> (s_{j,k} & x_k)
+                                                #       & false ==> s_{j+1,k+1}
+                                                #       & (s_{j,k} & x_k) ==> s_{j+1,k+1}
+                                            
+                                            
+                                            #at least one y is true:
+                                                #(D)    y_0 | ... | y_{mult}
+                                            
+                                            #y_k true when exactly k are true:
+                                                #(E)    y_k <==> (s_{k,mult} & ~s_{k+1,mult})   [1 <= k <= mult-1]
+                                                #
+                                                #i.e.,  y_k ==> s_{k,mult}
+                                                #       & y_k ==> ~s_{k+1,mult}
+                                                #
+                                                #       & (s_{k,mult} & ~s_{k+1,mult}) ==> y_k
+                                                
+                                                #(F)    y_{mult} <==> s_{mult,mult}
+                                        
+                                        #in CNF form:
+                                            #(A)    (x_0 | ~s_{1,1}) 
+                                            #       & (~x_0 | s_{1,1})
+                                            
+                                            #(B)   (~s_{1,k+1} | x_k | s_{1,k}) 
+                                            #       & ~x_k | s_{1,k+1} 
+                                            #       & ~s_{1,k} | s_{1,k+1} 
+                                            
+                                            #(C)    ~s_{j+1,k+1} | s_{j+1,k} | s_{j,k}
+                                            #       & ~s_{j+1,k+1} | s_{j+1,k} | x_k
+                                            #
+                                            #       & ~s_{j+1,k} | s_{j+1,k+1}
+                                            #       & ~s_{j,k} | ~x_k | s_{j+1,k+1}
+                                            
+                                            #or if j = k:
+                                            #       ~s_{j+1,k+1} | s_{j,k}
+                                            #       & ~s_{j+1,k+1} | x_k
+                                            #
+                                            #       & ~s_{j,k} | ~x_k | s_{j+1,k+1}
+                                            
+                                            #(D)    y_0 | ... | y_{mult}
+                                            
+                                            #(E)    ~y_k | s_{k,mult}
+                                            #       & ~y_k | ~s_{k+1,mult}
+                                            #       & ~s_{k,mult} | s_{k+1,mult} | y_k
+                                            
+                                            #(F)    ~y_{mult} | s_{mult,mult}
+                                            #       & ~s_{mult,mult} | y_{mult}
+                                            
+                                        
+                                        #y's are already labeled...
+                                        #label sequential counter s_{j,k}
+                                        seq_label = dict()
+                                        for j in range(1,mult+1):
+                                            for k in range(j,mult+1):
+                                                    seq_label[(j,k)] = dummy_ctr
+                                                    dummy_ctr += 1
+                                        
+                                        xs = inds[coe]
+                                        
+                                        
+                                        #(A)    (x_1 | ~s_{1,1}) 
+                                        #       & (~x_1 | s_{1,1})
+                                        if get_tups:
+                                            curr_clauses.append((xs[0], -seq_label[(1,1)]))
+                                            curr_clauses.append((-xs[0], seq_label[(1,1)]))
+                                        
+                                        outfile.write( str(xs[0]) + " " + str(-seq_label[(1,1)]) + " 0\n")
+                                        outfile.write( str(-xs[0]) + " " + str(seq_label[(1,1)]) + " 0\n")
+                                        
+                                        num_clauses += 2
+                                        
+                                        #(D)    y_0 | ... | y_{mult}
+                                        new_line = tuple([dum_relabel[idums[j]] for j in range(mult+1)])
+                                        if get_tups:
+                                            curr_clauses.append(new_line)
+                                        
+                                        outfile.write(" ".join(str(x) for x in new_line) + " 0\n")
+                                        
+                                        num_clauses += 1
+                                        
+                                        #(F)    ~y_{mult} | s_{mult,mult}
+                                        #       & ~s_{mult,mult} | y_{mult}
+                                        if get_tups:
+                                            curr_clauses.append((dum_relabel[idums[mult]], -seq_label[(mult,mult)]))
+                                            curr_clauses.append((dum_relabel[-idums[mult]], seq_label[(mult,mult)]))
+                                        
+                                        outfile.write( str(dum_relabel[idums[mult]]) + " " + str(-seq_label[(mult,mult)]) + " 0\n")
+                                        outfile.write( str(dum_relabel[-idums[mult]]) + " " + str(seq_label[(mult,mult)]) + " 0\n")
+                                        
+                                        num_clauses += 2
+                                        
+                                        for k in range(1,mult):
+                                            
+                                            
+                                            #(B)   (~s_{1,k+1} | x_k | s_{1,k}) 
+                                            #       & ~x_k | s_{1,k+1} 
+                                            #       & ~s_{1,k} | s_{1,k+1} 
+                                            if get_tups:
+                                                curr_clauses.append( (-seq_label[(1,k+1)], xs[k], seq_label[(1,k)]) )
+                                                curr_clauses.append( (-xs[k],seq_label[(1,k+1)]) )
+                                                curr_clauses.append( (-seq_label[(1,k)],seq_label[(1,k+1)]) )
+
+                                            outfile.write( str(-seq_label[(1,k+1)]) + " " + str(xs[k]) + " " + str(seq_label[(1,k)]) + " 0\n")
+                                            outfile.write( str(-xs[k]) + " " + str(seq_label[(1,k+1)]) + " 0\n")
+                                            outfile.write( str(-seq_label[(1,k)]) + " " + str(seq_label[(1,k+1)]) + " 0\n")
+                                            
+                                            num_clauses += 3
+                                            
+                                            
+                                            #(E)    ~y_k | s_{k,mult}
+                                            #       & ~y_k | ~s_{k+1,mult}
+                                            #       & ~s_{k,mult} | s_{k+1,mult} | y_k
+                                            if get_tups:
+                                                curr_clauses.append( (dum_relabel[-idums[k]],seq_label[(k,mult)]) )
+                                                curr_clauses.append( (dum_relabel[-idums[k]],-seq_label[(k+1,mult)]) )
+                                                curr_clauses.append( (seq_label[(k,mult)],seq_label[(k+1,mult)],dum_relabel[idums[k]]) )
+                                            
+                                            outfile.write( str(dum_relabel[-idums[k]]) + " " + str(seq_label[(k,mult)]) + " 0\n")
+                                            outfile.write( str(dum_relabel[-idums[k]]) + " " + str(-seq_label[(k+1,mult)]) + " 0\n")
+                                            outfile.write( str(seq_label[(k,mult)]) + " " + str(seq_label[(k+1,mult)]) + " " + str(dum_relabel[idums[k]]) + " 0\n")
+                                            num_clauses += 3
+                                        
+                                        
+                                        for j in range(1,mult):
+                                            
+                                            
+                                            #(C) with j = k:
+                                            #       ~s_{j+1,k+1} | s_{j,k}
+                                            #       & ~s_{j+1,k+1} | x_k
+                                            #
+                                            #       & ~s_{j,k} | ~x_k | s_{j+1,k+1}
+                                            k = j
+                                            if get_tups:
+                                                curr_clauses.append( (-seq_label[(j+1,k+1)],seq_label[(j,k)]) )
+                                                curr_clauses.append( (-seq_label[(j+1,k+1)],xs[k]) )
+                                                curr_clauses.append( (-seq_label[(j,k)],-xs[k],seq_label[(j+1,k+1)]) )
+                                            
+                                            outfile.write( str(-seq_label[(j+1,k+1)]) + " " + str(seq_label[(j,k)]) + " 0\n" )
+                                            outfile.write( str(-seq_label[(j+1,k+1)]) + " " + str(xs[k]) + " 0\n" )
+                                            outfile.write( str(-seq_label[(j,k)]) + " " + str(-xs[k]) + " " + str(seq_label[(j+1,k+1)]) + " 0\n" )
+                                            num_clauses += 3
+                                            
+                                            
+                                            
+                                            
+                                            for k in range(j+1,mult):
+                                                
+                                                
+                                                #(C)    ~s_{j+1,k+1} | s_{j+1,k} | s_{j,k}
+                                                #       & ~s_{j+1,k+1} | s_{j+1,k} | x_k
+                                                #
+                                                #       & ~s_{j+1,k} | s_{j+1,k+1}
+                                                #       & ~s_{j,k} | ~x_k | s_{j+1,k+1}
+                                                if get_tups:
+                                                    curr_clauses.append( (-seq_label[(j+1,k+1)],seq_label[(j+1,k)],seq_label[(j,k)]) )
+                                                    curr_clauses.append( (-seq_label[(j+1,k+1)],seq_label[(j+1,k)],xs[k]) )
+                                                    curr_clauses.append( (-seq_label[(j+1,k)],seq_label[(j+1,k+1)]) )
+                                                    curr_clauses.append( (-seq_label[(j,k)],-xs[k],seq_label[(j+1,k+1)]) )
+                                                
+                                                outfile.write( str(-seq_label[(j+1,k+1)]) + " " + str(seq_label[(j+1,k)]) + " " + str(seq_label[(j,k)]) + " 0\n" )
+                                                outfile.write( str(-seq_label[(j+1,k+1)]) + " " + str(seq_label[(j+1,k)]) + " " + str(xs[k]) + " 0\n" )
+                                                outfile.write( str(-seq_label[(j+1,k)]) + " " + str(seq_label[(j+1,k+1)]) + " 0\n" )
+                                                outfile.write( str(-seq_label[(j,k)]) + " " + str(-xs[k]) + " " + str(seq_label[(j+1,k+1)]) + " 0\n" )
+                                                num_clauses += 4
+                                        
+                                        
+                                        
+                                        
+                                        
+                                        
+                                        
+                                        
+                                    else: 
+                                        #at least one y_j is true
+                                        #####doing the dummy_clause stuff here now
+                                        
+                                        if not len(idums) == mult+1:
+                                            print 'index disagreement!'
+                                            print 'indices', idums
+                                            print 'coe,mult', coe, mult
+                                            print 
+                                        new_line = tuple([dum_relabel[idums[j]] for j in range(mult+1)])
+                                        if get_tups:
+                                            curr_clauses.append(new_line)      #[0. .mult]]))
+                                        num_clauses+=1
+                                        
+                                        outfile.write(" ".join(str(x) for x in new_line) + " 0\n")
+
                                     
-                                    #at least one y_j is true
-                                    #####doing the dummy_clause stuff here now
                                     
-                                    if not len(idums) == mult+1:
-                                        print 'index disagreement!'
-                                        print 'indices', idums
-                                        print 'coe,mult', coe, mult
-                                        print 
-                                    new_line = tuple([dum_relabel[idums[j]] for j in range(mult+1)])
-                                    curr_clauses.append(new_line)      #[0. .mult]]))
-                                    num_clauses+=1
                                     
-                                    strs=" ".join(str(x) for x in new_line)
-                                    outfile.write(strs+" 0\n")
+                                        for j in range(mult+1):     #[0. .mult]:
+                                            
+                                            ####replacing this code with sequential counting
+                                            #### see above
+                                        
+                                            #no two y_j's can be simultaneously true
+                                            ####doing the dummy_clause stuff here now
+                                            for k in range(j+1, mult+1):#[j+1. .mult]:
+                                                if get_tups:
+                                                    curr_clauses.append( (-dum_relabel[idums[j]], -dum_relabel[idums[k]]) )
+                                                num_clauses+=1
+                                                outfile.write(str(-dum_relabel[idums[j]]) + " " + str(-dum_relabel[idums[k]]) + " 0\n")
+                                            
+                                            #y_j implies that every j+1 set of x's has a False
+                                            for sub in combinations( inds[coe], j+1):
+                                                tup = tuple([-w-1 for w in sub] + [dum_relabel[-idums[j]]])
+                                                if VERBOSE_HADS:
+                                                    print '    ', tup
+                                                if get_tups:
+                                                    curr_clauses.append(tup)
+                                                num_clauses+=1
+                                                outfile.write( " ".join(str(x) for x in tup) + " 0\n" )
+                                        
+                                        
+                                            #y_j implies that every mult-j+1 set of x's has a True
+                                            for sub in combinations( inds[coe], mult-j+1):
+                                                tup = tuple([w+1 for w in sub] + [dum_relabel[-idums[j]]])
+                                                if VERBOSE_HADS:
+                                                    print '    ', tup
+                                                if get_tups:
+                                                    curr_clauses.append(tup)
+                                                num_clauses+=1
+                                                outfile.write( " ".join(str(x) for x in tup) + " 0\n" )
 
                                 
-                                
-                                
-                                    for j in range(mult+1):     #[0. .mult]:
-                                        
-                                        
-                                        #no two y_j's can be simultaneously true
-                                        ####doing the dummy_clause stuff here now
-                                        
-                                        for k in range(j+1, mult+1):#[j+1. .mult]:
-                                            curr_clauses.append( (-dum_relabel[idums[j]], -dum_relabel[idums[k]]) )
-                                            num_clauses+=1
-                                            outfile.write(str(-dum_relabel[idums[j]]) + " " + str(-dum_relabel[idums[k]]) + " 0\n")
-                                        
-                                        #y_j implies that every j+1 set of x's has a False
-                                        for sub in combinations( inds[coe], j+1):
-                                            tup = tuple([-w-1 for w in sub] + [dum_relabel[-idums[j]]])
-                                            if VERBOSE_HADS:
-                                                print '    ', tup
-                                            curr_clauses.append(tup)
-                                            num_clauses+=1
-                                            strs=" ".join(str(x) for x in tup)
-                                            outfile.write( strs+" 0\n" )
-                                    
-                                    
-                                        #y_j implies that every mult-j+1 set of x's has a True
-                                        for sub in combinations( inds[coe], mult-j+1):
-                                            tup = tuple([w+1 for w in sub] + [dum_relabel[-idums[j]]])
-                                            if VERBOSE_HADS:
-                                                print '    ', tup
-                                            curr_clauses.append(tup)
-                                            num_clauses+=1
-                                            strs=" ".join(str(x) for x in tup)
-                                            outfile.write( strs+" 0\n" )
-
-                                
-            if TIDYING:# or len(curr_clauses)<11000:
+            if TIDYING and get_tups:# or len(curr_clauses)<11000:
                 if VERBOSE:
-                    print 'final tidying up of the', len(curr_clauses),'clauses. . .'
+                    print 'final tidying up of the', num_clauses,'clauses. . .'
                 simpler = simplify_tup_list(curr_clauses)
                 tup_lists.append(simpler)
             
@@ -927,9 +1145,10 @@ def hads_to_tups(hads, all_columns = True, get_cheats = False, get_matrices = Fa
                     print '    added tup list of', len(simpler), 'constraint and', dummy_ctr, 'vars from', len(matchings), 'matchings'
                     print 
             else:
-                tup_lists.append(curr_clauses)
+                if get_tups:
+                    tup_lists.append(curr_clauses)
                 if VERBOSE:
-                    print '    added tup list of', len(curr_clauses), 'constraints and', dummy_ctr, 'vars from', len(matchings), 'matchings'
+                    print '    added tup list of', num_clauses, 'constraints and', dummy_ctr, 'vars from', len(matchings), 'matchings'
                     print 
             
             if get_cheats:
@@ -945,7 +1164,7 @@ def hads_to_tups(hads, all_columns = True, get_cheats = False, get_matrices = Fa
         with open(outname, "r+") as outfile:
             existing=outfile.read()
             outfile.seek(0) #point to first line
-            outfile.write("p cnf " + str(dummy_ctr) + " " + str(len(curr_clauses)) + "\n"+existing)
+            outfile.write("p cnf " + str(dummy_ctr) + " " + str(num_clauses) + "\n"+existing)
         
         
         if get_cheats:
@@ -1004,5 +1223,5 @@ def hads_to_tups(hads, all_columns = True, get_cheats = False, get_matrices = Fa
 
 #outs = hads_to_tups(["had.32." + hname + ".txt" for hname in  ["pal","syl","t1","t2","t3","t4"] ], all_columns = False)
 
-outs = hads_to_tups(["ktr_test.txt" ], all_columns = False, had_type = 'ktr')
+outs = hads_to_tups(["ktr_test.txt" ], all_columns = False, had_type = 'ktr', get_tups = True)
 
