@@ -897,11 +897,18 @@ def hads_to_tups(hads, all_columns = True, get_cheats = False, get_matrices = Fa
                                         if sol[len(coes)]==0:
                                             #row sum = 0 implies not x_{a,b}
                                             sol_vars = [dum_relabel[-dummap[i][sol[i]]] for i in range(len(coes))]
+                                            if get_tups:
+                                                curr_clauses.append(tuple([-e_map[(a,b)]] + sol_vars))
                                             outfile.write(to_line([-e_map[(a,b)]] + sol_vars))
+                                            num_clauses += 1
                                         else:
                                             #row sum = 1 implies x_{a,b}
-                                            sol_vars = [dum_relabel[dummap[i][sol[i]]] for i in range(len(coes))]
+                                            sol_vars = [dum_relabel[-dummap[i][sol[i]]] for i in range(len(coes))]
+                                            if get_tups:
+                                                curr_clauses.append(tuple([e_map[(a,b)]] + sol_vars))
                                             outfile.write(to_line([e_map[(a,b)]] + sol_vars))
+                                            num_clauses += 1
+                                    #print 
 
                             
                             
@@ -1288,5 +1295,5 @@ def hads_to_tups(hads, all_columns = True, get_cheats = False, get_matrices = Fa
 
 #outs = hads_to_tups(["had.32." + hname + ".txt" for hname in  ["pal","syl","t1","t2","t3","t4"] ], all_columns = False)
 
-outs = hads_to_tups(["ktr_test.txt" ], all_columns = False, had_type = 'ktr', get_tups = True)
+outs = hads_to_tups(["ktr_test.txt" ], all_columns = False, had_type = 'ktr', get_tups = True, all_edges = True)
 
