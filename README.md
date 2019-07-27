@@ -5,8 +5,8 @@ See LICENSE for more details.
 
 Used to find all graphs diagonalizable by given Hadamard matrices.  
 First converts the problem for each given Hadamard matrix to a SAT formula and writes to a cnf file.  
-Then uses (any) SAT solver to find all solutions and write the given solutions as adjacency matrices of graphs.  
-Then (not yet implemented), uses nauty to list all diagonalized graphs.  
+Then uses any SAT solver (currently Glucse 4.0) to find all solutions and write the given solutions as graph6 strings.  
+Then uses nauty to remove isomorphs.  
 
 To set up:  
     1. install networkx and pysat with pip install networkx and pip install python-sat
