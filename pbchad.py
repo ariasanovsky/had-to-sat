@@ -8,7 +8,30 @@ from numpy import matrix
 
 import sys
 
-from pysat.solvers import Glucose3, Glucose4, Lingeling, MapleChrono, MapleCM, Maplesat, Minicard, Minisat22, MinisatGH
+if len(sys.argv) >= 4:
+    SOLVER_NUM = int(sys.argv[3])
+else:
+    SOLVER_NUM = 0
+
+if SOLVER_NUM == 0:
+    from pysat.solvers import Glucose3
+if SOLVER_NUM == 1:
+    from pysat.solvers import Glucose4
+if SOLVER_NUM == 2:
+    from pysat.solvers import Lingeling
+if SOLVER_NUM == 3:
+    from pysat.solvers import MapleChrono
+if SOLVER_NUM == 4:
+    from pysat.solvers import MapleCM
+if SOLVER_NUM == 5:
+    from pysat.solvers import Maplesat
+if SOLVER_NUM == 6:
+    from pysat.solvers import Minicard
+if SOLVER_NUM == 7:
+    from pysat.solvers import Minisat22
+if SOLVER_NUM == 8:
+    from pysat.solvers import MinisatGH
+
 from pysat.pb import *
 
 import datetime
@@ -503,14 +526,24 @@ def hads_to_graphs(infile_names, outfile_names, all_columns = True, transpose = 
             nclauses = 0
             nvars = K*(K-1)/2
             
-            g = Glucose3()
-            #g = Glucose4()
-            #g = Lingeling()
-            #g = MapleChrono()
-            #g = MapleCM()
-            #g = Maplesat()
-            #g = Minisat22()
-            #g = MinisatGH()
+            if SOLVER_NUM == 0:
+                g = Glucose3()
+            if SOLVER_NUM == 1:
+                g = Glucose4()
+            if SOLVER_NUM == 2:
+                g = Lingeling()
+            if SOLVER_NUM == 3:
+                g = MapleChrono()
+            if SOLVER_NUM == 4:
+                g = MapleCM()
+            if SOLVER_NUM == 5:
+                g = Maplesat()
+            if SOLVER_NUM == 6:
+                g = Minicard()
+            if SOLVER_NUM == 7:
+                g = Minisat22()
+            if SOLVER_NUM == 8:
+                g = MinisatGH()
             
             matchings = dict()
             
@@ -671,6 +704,5 @@ def hads_to_graphs(infile_names, outfile_names, all_columns = True, transpose = 
 infile_name = sys.argv[1]
 outfile_name = sys.argv[2]
 
-print(datetime.datetime.now().time())
 outs = hads_to_graphs([infile_name], [outfile_name], all_columns = False, transpose = True)
 
