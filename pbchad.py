@@ -6,6 +6,8 @@ from src import g_to_g6
 import networkx as nx
 from numpy import matrix
 
+import sys
+
 from pysat.solvers import Glucose4
 from pysat.pb import *
 
@@ -28,7 +30,6 @@ TO_CNFS = "./cnfs/"
 TO_MASTER = "./g6s/master32.g6"
 
 TO_SLOANE = TO_HADS + "sloane/"
-TO_KTR = TO_HADS + "ktr/"
 
 def diagonal_matrix(x):
     m = len(x)
@@ -525,13 +526,13 @@ def show_zeroed_clauses(good_clauses, assumed):
 
 #takes in a list of Hadamard matrices and returns a list of CNF tuples
 #the CNF tuples encode the diagonalization problem as a SAT problem
-def hads_to_graphs(hads, all_columns = True, transpose = True):
+def hads_to_graphs(infile_names, outfile_names, all_columns = True, transpose = True):
     
     start_time = datetime.datetime.now()
     
     translate = {'0':[-1,-1,-1,-1], '1':[-1,-1,-1, 1], '2':[-1,-1, 1,-1], '3':[-1,-1, 1, 1], '4':[-1, 1,-1,-1], '5':[-1, 1,-1, 1], '6':[-1, 1, 1,-1], '7':[-1, 1, 1, 1], '8':[ 1,-1,-1,-1], '9':[ 1,-1,-1, 1], 'A':[ 1,-1, 1,-1], 'B':[ 1,-1, 1, 1], 'C':[ 1, 1,-1,-1], 'D':[ 1, 1,-1, 1], 'E':[ 1, 1, 1,-1], 'F':[ 1, 1, 1, 1]}
-    myhad = hads[0]
-    infile = open(TO_KTR + myhad, "r")
+    myhad = infile_names[0]
+    infile = open(myhad, "r")
     infile.readline()
     infile.readline()
     infile.readline()
@@ -549,11 +550,11 @@ def hads_to_graphs(hads, all_columns = True, transpose = True):
     
     mults_to_clauses = dict()
     
-    while c < len(hads):
+    while c < len(infile_names):
         myh = []
         if not chunk:
-            myhad = hads[c]
-            infile = open(TO_KTR + myhad, "r")
+            myhad = infile_names[c]
+            infile = open(myhad, "r")
             infile.readline()
             infile.readline()
             infile.readline()
@@ -784,7 +785,10 @@ def hads_to_graphs(hads, all_columns = True, transpose = True):
     outmaster.close()
 
 DEBUGGING = False
-            
+
+infile_name = sys.argv[1]
+outfile_name = sys.argv[2]
+
 print(datetime.datetime.now().time())
-outs = hads_to_graphs(["ktr_test.txt" ], all_columns = False)
+outs = hads_to_graphs([infile_name], [outfile_name], all_columns = False, transpose = True)
 
