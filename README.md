@@ -9,9 +9,7 @@ Then uses (any) SAT solver to find all solutions and write the given solutions a
 Then (not yet implemented), uses nauty to list all diagonalized graphs.  
 
 To set up:  
-    1. Populate a source directory /src/ with the contents of /logic/ as well as /misc/flatten.py from the sage /src/ directory.  
-    2. Changing line 147 of boolformula.py so that it reads: from . import flatten  
+    1. install networkx and pysat with pip install networkx and pip install python-sat
+    2. Populate a source directory /src/ with https://searchcode.com/codesearch/raw/89954425/ saved as g_to_g6.py  
     3. Populate a directory /hads/ktr/ with Hadamard matrices from http://math.ipm.ac.ir/~tayfeh-r/Hadamard32.htm   
-    4. Populate a directory /hads/sloane/ with Hadamard matrices from http://neilsloane.com/hadamard/  
-    5. Install your favorite SAT solver in the project directory.  
-    6. (not implemented) Install nauty in a subdirectory.  
+    4. Install nauty in a subdirectory.  
