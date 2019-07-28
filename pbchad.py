@@ -310,7 +310,8 @@ def remove_singletons(good_clauses, dummy_threshold):
             remove_singletons(good_clauses, dummy_threshold)
             return True
     return False
-    
+
+
 
 #takes in a list of tuples corresponding to a CNF formula 
 #returns a slightly shorter list for an equivalent formula
@@ -414,6 +415,11 @@ def show_zeroed_clauses(good_clauses, assumed):
         reduced = [j for j in good_clauses[i] if not -j in assumed]
         j = 0
         zeroed = False
+        
+        if len(reduced) == 0:
+            print 'contradiction at', i, good_clauses[i], 'with assumption:', assumed
+            return False
+        
         while j < len(assumed) and not zeroed:
             if assumed[j] in reduced:
                 zeroed = True
@@ -557,6 +563,8 @@ def hads_to_graphs(infile_names, outfile_names, all_columns = True, transpose = 
                 my_row = tuple(my_row)
                 matchings[my_row] = ((ectr,0,b))
             
+            newb_ctr = 0
+            
             for a in range(1,K):
                 for b in range(a+1,K):
                     if DEBUGGING:
@@ -638,11 +646,18 @@ def hads_to_graphs(infile_names, outfile_names, all_columns = True, transpose = 
                             if DEBUGGING:
                                 print
                                 print
-                                print 'adding clauses; there are', nvars, 'vars'
-                        
+                                print 'adding new clauses; there are', nvars, 'vars'
+                            
+                            newb_ctr += 1
+                            
+                            if newb_ctr == 6:
+                                print 'new formula:'
+                                for curr_clause in curr_clauses:
+                                    print '    ', curr_clause, ','
+                            
                             for curr_clause in curr_clauses:
                                 if DEBUGGING:
-                                    print 'tidying clause', c, 'with ectr=', ectr,'and', nvars, 'vars'
+                                    print 'relabeling clause', c, 'with ectr=', ectr,'and', nvars, 'vars'
                                 new_clause = []
                                 for k in curr_clause:
                                     if abs(k) <= ectr:
@@ -705,4 +720,3 @@ infile_name = sys.argv[1]
 outfile_name = sys.argv[2]
 
 outs = hads_to_graphs([infile_name], [outfile_name], all_columns = False, transpose = True)
-
