@@ -553,7 +553,6 @@ def hads_to_graphs(infile_names, outfile_names, all_columns = True, transpose = 
             
             matchings = dict()
             
-            oofctr = 0
             ectr = 0
             
             for b in range(K-1):
@@ -562,8 +561,6 @@ def hads_to_graphs(infile_names, outfile_names, all_columns = True, transpose = 
                 my_row[b] = K
                 my_row = tuple(my_row)
                 matchings[my_row] = ((ectr,0,b))
-            
-            newb_ctr = 0
             
             for a in range(1,K):
                 for b in range(a+1,K):
@@ -647,13 +644,6 @@ def hads_to_graphs(infile_names, outfile_names, all_columns = True, transpose = 
                                 print
                                 print
                                 print 'adding new clauses; there are', nvars, 'vars'
-                            
-                            newb_ctr += 1
-                            
-                            if newb_ctr == 6:
-                                print 'new formula:'
-                                for curr_clause in curr_clauses:
-                                    print '    ', curr_clause, ','
                             
                             for curr_clause in curr_clauses:
                                 if DEBUGGING:
