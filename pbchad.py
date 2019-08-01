@@ -2,16 +2,26 @@
 ##### See LICENSE for more details.  
 ##### Written by Alexander W. Neal Riasanovsky.  
 
+from __future__ import print_function
+
 from src import g_to_g6
 import networkx as nx
 from numpy import matrix
 
 import sys
+import fileinput
 
-if len(sys.argv) >= 4:
-    SOLVER_NUM = int(sys.argv[3])
-else:
+if len(sys.argv) <= 1:
+    K = 32
     SOLVER_NUM = 0
+
+if len(sys.argv) == 2:
+    K = int(sys.argv[1])
+    SOLVER_NUM = 0
+
+if len(sys.argv) >= 2:
+    K = int(sys.argv[1])
+    SOLVER_NUM = int(sys.argv[2])
 
 if SOLVER_NUM == 0:
     from pysat.solvers import Glucose3
@@ -34,18 +44,15 @@ if SOLVER_NUM == 8:
 
 from pysat.pb import *
 
-import datetime
-import time
+DEBUGGING = True
 
-#debug variables; delete once code is good!
-VERBOSE = True
-DEBUGGING = False
+if DEBUGGING:
+    import datetime
+    import time
+
 
 TO_HADS = "./hads/"
 TO_CNFS = "./cnfs/"
-TO_MASTER = "./g6s/master32.g6"
-
-TO_SLOANE = TO_HADS + "sloane/"
 
 def diagonal_matrix(x):
     m = len(x)
@@ -128,8 +135,8 @@ def abc_simplifier(good_clauses):
                     #remove c2
                     
                     if DEBUGGING:
-                        print 'at', (i,j), c1, c2, '    are of the form A and A|C'
-                        print 'so remove', c2
+                        print('at', (i,j), c1, c2, '    are of the form A and A|C', file = sys.stderr)
+                        print('so remove', c2, file = sys.stderr)
                     dud = good_clauses.pop(j)
                     abc_simplifier(good_clauses)
                     return True
@@ -140,8 +147,8 @@ def abc_simplifier(good_clauses):
                         #replace c2 with A|C
                         
                         if DEBUGGING:
-                            print 'at', (i,j), c1, c2, '    are of the form A|B and A|~B|C'
-                            print 'so remove', -c1[helper_output], 'from', c2
+                            print('at', (i,j), c1, c2, '    are of the form A|B and A|~B|C', file = sys.stderr)
+                            print('so remove', -c1[helper_output], 'from', c2, file = sys.stderr)
                         
                         c2.remove(-c1[helper_output])
                         good_clauses[j] = c2
@@ -156,7 +163,7 @@ def abc_simplifier(good_clauses):
 #also removes dupes within clauses if spotted
 def relabel(good_clauses, a, b):
     if DEBUGGING:
-        print '    okay, relabeling', b, 'to', a
+        print('    okay, relabeling', b, 'to', a, file = sys.stderr)
     to_pop = []
     for i in good_clauses:
         c1 = good_clauses[i]
@@ -167,11 +174,11 @@ def relabel(good_clauses, a, b):
                 #clause is always satisfied
                 to_pop.append(i)
                 if DEBUGGING:
-                    print '        c1=', c1, 'so toss it!'
+                    print('        c1=', c1, 'so toss it!', file = sys.stderr)
             else:
                 if b in c1:
                     if DEBUGGING:
-                        print '        c1=', c1, 'so remove', b
+                        print('        c1=', c1, 'so remove', b, file = sys.stderr)
                     #removing b is an equivalent clause
                     c1.remove(b)
                     good_clauses[i] = c1
@@ -180,13 +187,13 @@ def relabel(good_clauses, a, b):
             if -a in c1:
                 if b in c1:
                     if DEBUGGING:
-                        print '        c1=', c1, 'so toss it!'
+                        print('        c1=', c1, 'so toss it!', file = sys.stderr)
                     #clause is always satisfied
                     to_pop.append(i)
                 else:
                     if -b in c1:
                         if DEBUGGING:
-                            print '        c1=', c1, 'so remove', -b
+                            print('        c1=', c1, 'so remove', -b, file = sys.stderr)
                         #removing -b is an equivalent clause
                         c1.remove(-b)
                         good_clauses[i] = c1
@@ -195,12 +202,12 @@ def relabel(good_clauses, a, b):
                 if b in c1:
                     if -b in c1:
                         if DEBUGGING:
-                            print '        c1=', c1, 'so toss it!'
+                            print('        c1=', c1, 'so toss it!', file = sys.stderr)
                         #clause is always satisfied
                         to_pop.append(i)
                     else:
                         if DEBUGGING:
-                            print '        c1=', c1, 'so swap', b, 'with', a
+                            print('        c1=', c1, 'so swap', b, 'with', a, file = sys.stderr)
                         c1.remove(b)
                         c1.append(a)
                         c1.sort(cmp = lambda x,y: abs(x)-abs(y))
@@ -208,7 +215,7 @@ def relabel(good_clauses, a, b):
                 else:
                     if -b in c1:
                         if DEBUGGING:
-                            print '        c1=', c1, 'so swap', -b, 'with', -a
+                            print('        c1=', c1, 'so swap', -b, 'with', -a, file = sys.stderr)
                         c1.remove(-b)
                         c1.append(-a)
                         c1.sort(cmp = lambda x,y:abs(x)-abs(y))
@@ -234,17 +241,17 @@ def simplify_by_substitutions(good_clauses, dummy_threshold):
                             a = c1[0]
                             b = -c1[1]
                             if DEBUGGING:
-                                print 'at', (i,j),':', c1, c2
+                                print('at', (i,j),':', c1, c2, file = sys.stderr)
                             if abs(b) >= dummy_threshold:
                                 dud = good_clauses.pop(i)
                                 dud = good_clauses.pop(j)
                                 if DEBUGGING:
-                                    print 'we dont need either clause now!'
+                                    print('we dont need either clause now!', file = sys.stderr)
                             else:
                                 #good_clauses[i] = c1
                                 #good_clauses[j] = c2
                                 if DEBUGGING:
-                                    print 'we need to keep the clauses intact'
+                                    print('we need to keep the clauses intact', file = sys.stderr)
                             relabel(good_clauses, a, b)
                             simplify_by_substitutions(good_clauses, dummy_threshold)
                             return True
@@ -276,7 +283,7 @@ def dummy_shift(good_clauses, dummy_threshold):
     while i >= 0:
         shifted = True
         if DEBUGGING:
-            print '    found a gap:', (dums[i], dums[i+1]), 'in', dums
+            print('    found a gap:', (dums[i], dums[i+1]), 'in', dums, file = sys.stderr)
         relabel(good_clauses, dums[i]+1, dums[i+1])
         dums[i+1] = dums[i] + 1
         i = has_gaps(dums)
@@ -293,20 +300,20 @@ def remove_singletons(good_clauses, dummy_threshold):
                     if a in good_clauses[j]:
                         to_pop.append(j)
                         if DEBUGGING:
-                            print good_clauses[j], 'got popped by', good_clauses[i]
+                            print(good_clauses[j], 'got popped by', good_clauses[i], file = sys.stderr)
                     if -a in good_clauses[j]:
                         if DEBUGGING:
-                            print good_clauses[j], 'got shortened by', good_clauses[i]
+                            print(good_clauses[j], 'got shortened by', good_clauses[i], file = sys.stderr)
                         new_clause = good_clauses[j]
                         new_clause.remove(-a)
                         good_clauses[j] = new_clause
             if abs(a) >= dummy_threshold:
                 to_pop.append(i)
                 if DEBUGGING:
-                    print 'at', i, good_clauses[i], 'is a dummy singleton'
+                    print('at', i, good_clauses[i], 'is a dummy singleton', file = sys.stderr)
             for j in to_pop:
                 dud = good_clauses.pop(j)
-                #print '    removed', a,'at', j, 'wow!'
+                print('    removed', a,'at', j, 'wow!', file = sys.stderr)
             remove_singletons(good_clauses, dummy_threshold)
             return True
     return False
@@ -338,14 +345,14 @@ def simplify_clause_list(old_clauses, dummy_threshold):
     #keep a dictionary of all good clauses, by their original index
     good_clauses = dict()
     if DEBUGGING:
-        print 'original clauses:'
+        print('original clauses:', file = sys.stderr)
     #make sure the clauses are sorted
     for i in range(len(old_clauses)):
         curr_clause = old_clauses[i]
         curr_clause.sort(cmp = lambda x,y: abs(x)-abs(y))
         good_clauses[i] = curr_clause
         if DEBUGGING:
-            print i, curr_clause
+            print(i, curr_clause, file = sys.stderr)
     
     lctr = 0
     progressing = True
@@ -353,51 +360,45 @@ def simplify_clause_list(old_clauses, dummy_threshold):
         progressing = False
         
         if DEBUGGING:
-            print 'printing nonzeroed clauses...'
+            print('printing nonzeroed clauses...', file = sys.stderr)
             show_zeroed_clauses( good_clauses, [-i for i in range(1,dummy_threshold)] )
         
         
         removed_singles = remove_singletons(good_clauses, dummy_threshold)
         if DEBUGGING and removed_singles:
-            print 'removed singles!'
+            print('removed singles!', file = sys.stderr)
         
-            print 'now only', len(good_clauses), 'clauses!'
-            print 'printing nonzeroed clauses...'
+            print('now only', len(good_clauses), 'clauses!', file = sys.stderr)
+            print('printing nonzeroed clauses...', file = sys.stderr)
             show_zeroed_clauses( good_clauses, [-i for i in range(1,dummy_threshold)] )
         
         subbed = simplify_by_substitutions(good_clauses, dummy_threshold)
         if DEBUGGING and subbed:
-            print 'subbed!'
+            print('subbed!', file = sys.stderr)
         
-            print 'now only', len(good_clauses), 'clauses!'
-            print 'printing nonzeroed clauses...'
+            print('now only', len(good_clauses), 'clauses!', file = sys.stderr)
+            print('printing nonzeroed clauses...', file = sys.stderr)
             show_zeroed_clauses( good_clauses, [-i for i in range(1,dummy_threshold)] )
         
         abc_simplified = abc_simplifier(good_clauses)
         if DEBUGGING and abc_simplified:
-            print 'abc simplified!'
+            print('abc simplified!', file = sys.stderr)
 
-            print 'now only', len(good_clauses), 'clauses!'
-            print 'printing nonzeroed clauses...'
+            print('now only', len(good_clauses), 'clauses!', file = sys.stderr)
+            print('printing nonzeroed clauses...', file = sys.stderr)
             show_zeroed_clauses( good_clauses, [-i for i in range(1,dummy_threshold)] )
-        
-        #print 
-        #print 'bro, somehow the dummy_threshold=', dummy_threshold 
-        #print
         
         progressing = subbed or abc_simplified or removed_singles
         lctr += 1 
         if DEBUGGING:
-            print 'finished', lctr, 'loops!'   
+            print('finished', lctr, 'loops!', file = sys.stderr)
         
-        #return 
-    
     shifted = dummy_shift(good_clauses, dummy_threshold)
     if DEBUGGING and shifted:
-        print 'shifted!'
+        print('shifted!', file = sys.stderr)
     
-        print 'now only', len(good_clauses), 'clauses!'
-        print 'printing nonzeroed clauses...'
+        print('now only', len(good_clauses), 'clauses!', file = sys.stderr)
+        print('printing nonzeroed clauses...', file = sys.stderr)
         show_zeroed_clauses( good_clauses, [-i for i in range(1,dummy_threshold)] )
     
     maxvar = 0
@@ -410,14 +411,14 @@ def simplify_clause_list(old_clauses, dummy_threshold):
 #helper method for debugging; helps show if a clause is 
 #satisfied by all-false truth assignments
 def show_zeroed_clauses(good_clauses, assumed):
-    print 'assumed', assumed
+    print('assumed', assumed, file = sys.stderr)
     for i in good_clauses:
         reduced = [j for j in good_clauses[i] if not -j in assumed]
         j = 0
         zeroed = False
         
         if len(reduced) == 0:
-            print 'contradiction at', i, good_clauses[i], 'with assumption:', assumed
+            print('contradiction at', i, good_clauses[i], 'with assumption:', assumed, file = sys.stderr)
             return False
         
         while j < len(assumed) and not zeroed:
@@ -427,7 +428,7 @@ def show_zeroed_clauses(good_clauses, assumed):
         
         if not zeroed:
             if len(reduced) == 1:
-                print '   added', reduced[0], 'because of', good_clauses[i]
+                print('   added', reduced[0], 'because of', good_clauses[i], file = sys.stderr)
                 assumed.append(reduced[0])
                 show_zeroed_clauses(good_clauses, assumed)
                 return
@@ -443,10 +444,11 @@ def show_zeroed_clauses(good_clauses, assumed):
             j += 1
         
         if not zeroed and len(reduced) > 0:
-            print i, reduced
+            if DEBUGGING:
+                print(i, reduced, file = sys.stderr)
             satisfied = False
-    print 'satisfied by zero?', satisfied
-    print
+    print('satisfied by zero?', satisfied, file = sys.stderr)
+    print("", file = sys.stderr)
     return
 
 
@@ -455,66 +457,47 @@ def show_zeroed_clauses(good_clauses, assumed):
 
 #takes in a list of Hadamard matrices and returns a list of CNF tuples
 #the CNF tuples encode the diagonalization problem as a SAT problem
-def hads_to_graphs(infile_names, outfile_names, all_columns = True, transpose = True):
+def hads_to_graphs(all_columns = True, transpose = True):
     
-    start_time = datetime.datetime.now()
+    if DEBUGGING:
+        start_time = datetime.datetime.now()
     
     translate = {'0':[-1,-1,-1,-1], '1':[-1,-1,-1, 1], '2':[-1,-1, 1,-1], '3':[-1,-1, 1, 1], '4':[-1, 1,-1,-1], '5':[-1, 1,-1, 1], '6':[-1, 1, 1,-1], '7':[-1, 1, 1, 1], '8':[ 1,-1,-1,-1], '9':[ 1,-1,-1, 1], 'A':[ 1,-1, 1,-1], 'B':[ 1,-1, 1, 1], 'C':[ 1, 1,-1,-1], 'D':[ 1, 1,-1, 1], 'E':[ 1, 1, 1,-1], 'F':[ 1, 1, 1, 1]}
-    myhad = infile_names[0]
-    infile = open(myhad, "r")
-    infile.readline()
-    infile.readline()
-    infile.readline()
-    infile.readline()
-    nchars = 288 #32 rows, 8 hex chars, one \n
-    chunk = infile.read(nchars)
-    infile.readline()
-    infile.readline()
-    infile.readline()
     
+    #tracks the number of graphs and hadamard matrices
     hctr = 0
-    c = 0
-    
-    outmaster = open(TO_MASTER, "w")
+    gctr = 0
     
     mults_to_clauses = dict()
     
-    while c < len(infile_names):
-        myh = []
-        if not chunk:
-            myhad = infile_names[c]
-            infile = open(myhad, "r")
-            infile.readline()
-            infile.readline()
-            infile.readline()
-            infile.readline()
-            chunk = infile.read(nchars)
-            infile.readline()
-            infile.readline()
-            infile.readline()
-        
-        for line in chunk.splitlines():
-            currline = []
-            for s in line:
-                currline.extend(translate[s])
-            myh.append(currline)
-        myh = matrix(myh)
-        
-        K = myh.shape[0]
-        
-        emap = dict()
-        ectr = 0
-        for a in range(K):
-            for b in range(a+1,K):
-                ectr += 1
-                emap[ectr] = (a,b)
-        
+    emap = dict()
+    ectr = 0
+    for a in range(K):
+        for b in range(a+1,K):
+            ectr += 1
+            emap[ectr] = (a,b)
+    
+    if all_columns:
         max_col = K-1
         
-        if not all_columns:
-            max_col = 0
+    else:
+        max_col = 0
+
+    for curr_line in fileinput.input():
+        myh = []
+        for s in curr_line:
+            myh.extend(translate[s])
+        myh = matrix([myh[i*K:(i+1)*K] for i in range(K)])
+            
         
-        for col in range(max_col+1):#[0. .max_col]:
+        #for line in chunk.splitlines():
+        #    myh = []
+        #    for s in line:
+        #        myh.extend(translate[s])
+        #myh = matrix([myh[i*K:(i+1)*K] for i in range(K)]])
+        
+        
+        for col in range(max_col+1):
             hh = swap_cols(myh, 0, col)
             dd = diagonal_matrix( [hh[j, 0] for j in range(K)])
             
@@ -565,7 +548,7 @@ def hads_to_graphs(infile_names, outfile_names, all_columns = True, transpose = 
             for a in range(1,K):
                 for b in range(a+1,K):
                     if DEBUGGING:
-                        print 'trying', (a,b)
+                        print('trying', (a,b), file = sys.stderr)
                     ectr += 1
                     hab =tuple([hh[a,j] * hh[b,j] for j in range(K)])
                     my_row = []
@@ -609,9 +592,6 @@ def hads_to_graphs(infile_names, outfile_names, all_columns = True, transpose = 
                             #for each coefficient c 
                             relab = dict()
                             
-                            #print 'trying to relabel with', old_coes_to_inds
-                            #print 'and', coes_to_inds,'...'
-                            
                             for coe in old_coes_to_inds:
                                 coe_ctr = 0
                                 for old_index in old_coes_to_inds[coe]:
@@ -634,20 +614,21 @@ def hads_to_graphs(infile_names, outfile_names, all_columns = True, transpose = 
                             nvars += num_new_vars
                             
                         else:
-                            print 'dealing with', mults,'for the first time...'
+                            if DEBUGGING:
+                                print('dealing with', mults,'for the first time...', file = sys.stderr)
                             cnf = PBEnc.equals( lits = range(1,K) + [ectr], weights = list(my_row)+[-K], bound = 0, encoding = 4 )
                             curr_clauses, maxvar = simplify_clause_list(cnf.clauses, ectr + 1)
                             
                             num_new_vars = maxvar - ectr
                             
                             if DEBUGGING:
-                                print
-                                print
-                                print 'adding new clauses; there are', nvars, 'vars'
+                                print("", file = sys.stderr)
+                                print("", file = sys.stderr)
+                                print('adding new clauses; there are', nvars, 'vars', file = sys.stderr)
                             
                             for curr_clause in curr_clauses:
                                 if DEBUGGING:
-                                    print 'relabeling clause', c, 'with ectr=', ectr,'and', nvars, 'vars'
+                                    print('relabeling clause', c, 'with ectr=', ectr,'and', nvars, 'vars', file = sys.stderr)
                                 new_clause = []
                                 for k in curr_clause:
                                     if abs(k) <= ectr:
@@ -655,14 +636,14 @@ def hads_to_graphs(infile_names, outfile_names, all_columns = True, transpose = 
                                     else:
                                         if k > 0:
                                             if DEBUGGING:
-                                                print k, 'is the', k-ectr,'th dummy...', 'shift it up by', nvars
+                                                print(k, 'is the', k-ectr,'th dummy...', 'shift it up by', nvars, file = sys.stderr)
                                             new_clause.append(k-ectr+nvars)
                                         else:
                                             new_clause.append(k+ectr-nvars)
                                             if DEBUGGING:
-                                                print k, 'is the', k+ectr,'th dummy...', 'shift it down by', nvars
+                                                print(k, 'is the', k+ectr,'th dummy...', 'shift it down by', nvars, file = sys.stderr)
                                 if DEBUGGING:
-                                    print '    adding', new_clause
+                                    print('    adding', new_clause, file = sys.stderr)
                                 g.add_clause(new_clause)
                             
                             nvars += num_new_vars
@@ -671,42 +652,28 @@ def hads_to_graphs(infile_names, outfile_names, all_columns = True, transpose = 
                             mults_to_clauses[mults] = (ectr, num_new_vars, coes_to_inds, curr_clauses)
                             
                             if DEBUGGING:
-                                print 'now there are', (nvars, nclauses), 'vars,clauses'
+                                print('now there are', (nvars, nclauses), 'vars,clauses', file=sys.stderr)
                             
             sol_ctr = 0
             
-            if VERBOSE:
-                print 'there are', nvars, 'variables and', nclauses, 'clauses'
-                print 'trying to find all solutions!'
+            if DEBUGGING:
+                print('there are', nvars, 'variables and', nclauses, 'clauses', file=sys.stderr)
+                print('trying to find all solutions!',file=sys.stderr)
                 
             while g.solve():
                 new_sol = g.get_model()
                 sol_ctr += 1
-                nx.write_graph6(nx.Graph([emap[k] for k in new_sol[:K*(K-1)/2] if k > 0]), outmaster, nodes = range(K))
+                gctr += 1
+                nx.write_graph6(nx.Graph([emap[k] for k in new_sol[:K*(K-1)/2] if k > 0]), sys.stdout, nodes = range(K))
                 g.add_clause( [-new_sol[j] for j in range(K-1)] )
             
             hctr += 1
             
-            if VERBOSE:
-                print sol_ctr, 'solutions found!'
+            if DEBUGGING:
+                print(sol_ctr, 'solutions found!', file = sys.stderr)
                 end_time = datetime.datetime.now()
                 elapsed_time = end_time - start_time
-                print 'total time elapsed:', elapsed_time.seconds,":",elapsed_time.microseconds, 'matrices solved:', hctr
-            
-        
-        chunk = infile.read(nchars)
-        if chunk:
-            infile.readline()
-            infile.readline()
-            infile.readline()
-        else:
-            c += 1
-            infile.close()
-    
-    outmaster.close()
+                print('total time elapsed:', elapsed_time.seconds,":",elapsed_time.microseconds, 'matrices solved:', hctr, file = sys.stderr)
+    return
 
-
-infile_name = sys.argv[1]
-outfile_name = sys.argv[2]
-
-outs = hads_to_graphs([infile_name], [outfile_name], all_columns = False, transpose = True)
+hads_to_graphs(all_columns = False, transpose = True)
