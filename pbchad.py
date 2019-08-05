@@ -12,16 +12,20 @@ import sys
 import fileinput
 
 if len(sys.argv) <= 1:
+    print('Not enough arguments!')
+    #return
+
+if len(sys.argv) <= 2:
     K = 32
     SOLVER_NUM = 0
 
-if len(sys.argv) == 2:
-    K = int(sys.argv[1])
+if len(sys.argv) == 3:
+    K = int(sys.argv[2])
     SOLVER_NUM = 0
 
-if len(sys.argv) >= 2:
-    K = int(sys.argv[1])
-    SOLVER_NUM = int(sys.argv[2])
+if len(sys.argv) >= 4:
+    K = int(sys.argv[2])
+    SOLVER_NUM = int(sys.argv[3])
 
 if SOLVER_NUM == 0:
     from pysat.solvers import Glucose3
@@ -44,7 +48,8 @@ if SOLVER_NUM == 8:
 
 from pysat.pb import *
 
-DEBUGGING = True
+DEBUGGING = False
+VERBOSE = True
 
 if DEBUGGING:
     import datetime
@@ -485,7 +490,22 @@ def hads_to_graphs(all_columns = True, transpose = True):
 
     for curr_line in fileinput.input():
         myh = []
-        for s in curr_line:
+        #print('curr line is:')
+        #print(curr_line)
+        #print('just did it')
+        #print('currline[:-1] is:')
+        #print(curr_line[:-1])
+        #print('just did it')
+        #print()
+        if DEBUGGING:
+            print('the entries of curr line are:', file = sys.stderr)
+            for s in curr_line:
+                print(s)
+        
+        for s in curr_line[:-1]:
+            if DEBUGGING:
+                print(s, file = sys.stderr)
+                print(translate[s], file = sys.stderr)
             myh.extend(translate[s])
         myh = matrix([myh[i*K:(i+1)*K] for i in range(K)])
             
@@ -496,6 +516,8 @@ def hads_to_graphs(all_columns = True, transpose = True):
         #        myh.extend(translate[s])
         #myh = matrix([myh[i*K:(i+1)*K] for i in range(K)]])
         
+        if VERBOSE:
+            print('trying matrix', hctr, '...', file = sys.stderr)
         
         for col in range(max_col+1):
             hh = swap_cols(myh, 0, col)
@@ -543,7 +565,7 @@ def hads_to_graphs(all_columns = True, transpose = True):
                 my_row = [0 for i in range(K-1)]
                 my_row[b] = K
                 my_row = tuple(my_row)
-                matchings[my_row] = ((ectr,0,b))
+                matchings[my_row] = [(ectr,0,b)]
             
             for a in range(1,K):
                 for b in range(a+1,K):
@@ -561,14 +583,16 @@ def hads_to_graphs(all_columns = True, transpose = True):
                     my_row = tuple(my_row)
                     
                     if my_row in matchings:
-                        matchings.append((ectr,a,b))
-                        old_ectr = matchings[my_row][0]
+                        matchings[my_row].append((ectr,a,b))
+                        old_ectr = matchings[my_row][0][0]
+                        if DEBUGGING:
+                            print('the old ectr,ectr=', old_ectr, ectr, file = sys.stderr)
                         g.add_clause((old_ectr,-ectr))
                         g.add_clause((-old_ectr,ectr))
                         nclauses += 2
                     
                     else:
-                        matchings[my_row] = (ectr,a,b)
+                        matchings[my_row] = [(ectr,a,b)]
                         
                         coes_to_inds = dict()
                         mults = []
@@ -656,24 +680,33 @@ def hads_to_graphs(all_columns = True, transpose = True):
                             
             sol_ctr = 0
             
-            if DEBUGGING:
+            if VERBOSE:
                 print('there are', nvars, 'variables and', nclauses, 'clauses', file=sys.stderr)
                 print('trying to find all solutions!',file=sys.stderr)
+            
+            if True:    #nvars >= 2000:
+                while g.solve():
+                    new_sol = g.get_model()
+                    sol_ctr += 1
+                    
+                    if sol_ctr % 10000 == 0:
+                        print('   ', sol_ctr, 'found so far...', file = sys.stderr)
+                    
+                    gctr += 1
+                    nx.write_graph6(nx.Graph([emap[k] for k in new_sol[:K*(K-1)/2] if k > 0]), sys.stdout, nodes = range(K))
+                    g.add_clause( [-new_sol[j] for j in range(K-1)] )
                 
-            while g.solve():
-                new_sol = g.get_model()
-                sol_ctr += 1
-                gctr += 1
-                nx.write_graph6(nx.Graph([emap[k] for k in new_sol[:K*(K-1)/2] if k > 0]), sys.stdout, nodes = range(K))
-                g.add_clause( [-new_sol[j] for j in range(K-1)] )
+                if VERBOSE:
+                    print(sol_ctr, 'solutions found!', file = sys.stderr)
+                    end_time = datetime.datetime.now()
+                    elapsed_time = end_time - start_time
+                    print('total time elapsed:', elapsed_time.seconds,":",elapsed_time.microseconds, 'matrices solved:', hctr, file = sys.stderr)
+            
+            else:
+                if VERBOSE:
+                    print('too hard for now!', file = sys.stderr)
             
             hctr += 1
-            
-            if DEBUGGING:
-                print(sol_ctr, 'solutions found!', file = sys.stderr)
-                end_time = datetime.datetime.now()
-                elapsed_time = end_time - start_time
-                print('total time elapsed:', elapsed_time.seconds,":",elapsed_time.microseconds, 'matrices solved:', hctr, file = sys.stderr)
     return
 
 hads_to_graphs(all_columns = False, transpose = True)
