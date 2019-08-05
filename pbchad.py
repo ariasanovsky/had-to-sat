@@ -698,9 +698,10 @@ def hads_to_graphs(all_columns = True, transpose = True):
                 
                 if VERBOSE:
                     print(sol_ctr, 'solutions found!', file = sys.stderr)
-                    end_time = datetime.datetime.now()
-                    elapsed_time = end_time - start_time
-                    print('total time elapsed:', elapsed_time.seconds,":",elapsed_time.microseconds, 'matrices solved:', hctr, file = sys.stderr)
+                    if DEBUGGING:
+                        end_time = datetime.datetime.now()
+                        elapsed_time = end_time - start_time
+                        print('total time elapsed:', elapsed_time.seconds,":",elapsed_time.microseconds, 'matrices solved:', hctr, file = sys.stderr)
             
             else:
                 if VERBOSE:
