@@ -11,10 +11,6 @@ from numpy import matrix
 import sys
 import fileinput
 
-if len(sys.argv) <= 1:
-    print('Not enough arguments!')
-    #return
-
 if len(sys.argv) <= 2:
     K = 32
     SOLVER_NUM = 0
@@ -459,6 +455,16 @@ def show_zeroed_clauses(good_clauses, assumed):
 
 
 
+#def sol_to_g6(sol):
+#    curr_g6 = ''
+#    curr_int = 0
+#    curr_index = 0
+#    for k in sol:
+#        if k > 0:
+#            curr_int |= 
+
+
+
 
 #takes in a list of Hadamard matrices and returns a list of CNF tuples
 #the CNF tuples encode the diagonalization problem as a SAT problem
@@ -689,11 +695,12 @@ def hads_to_graphs(all_columns = True, transpose = True):
                     new_sol = g.get_model()
                     sol_ctr += 1
                     
-                    if sol_ctr % 10000 == 0:
+                    if sol_ctr % 1000 == 0:
                         print('   ', sol_ctr, 'found so far...', file = sys.stderr)
                     
                     gctr += 1
                     nx.write_graph6(nx.Graph([emap[k] for k in new_sol[:K*(K-1)/2] if k > 0]), sys.stdout, nodes = range(K))
+                    #print( str([emap[k] for k in new_sol[:K*(K-1)/2] if k > 0]), file = sys.stdout )
                     g.add_clause( [-new_sol[j] for j in range(K-1)] )
                 
                 if VERBOSE:
