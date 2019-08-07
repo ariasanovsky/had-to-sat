@@ -44,8 +44,7 @@ if SOLVER_NUM == 8:
 
 from pysat.pb import *
 
-DEBUGGING = True
-DEEP_DEBUGGING = False
+DEBUGGING = False
 VERBOSE = True
 
 if DEBUGGING:
@@ -136,7 +135,7 @@ def abc_simplifier(good_clauses):
                     #then c1 = A and c2 = A|C
                     #remove c2
                     
-                    if DEEP_DEBUGGING:
+                    if DEBUGGING:
                         print('at', (i,j), c1, c2, '    are of the form A and A|C', file = sys.stderr)
                         print('so remove', c2, file = sys.stderr)
                     dud = good_clauses.pop(j)
@@ -148,7 +147,7 @@ def abc_simplifier(good_clauses):
                         #then c1 = A|B and c2 = A|~B|C
                         #replace c2 with A|C
                         
-                        if DEEP_DEBUGGING:
+                        if DEBUGGING:
                             print('at', (i,j), c1, c2, '    are of the form A|B and A|~B|C', file = sys.stderr)
                             print('so remove', -c1[helper_output], 'from', c2, file = sys.stderr)
                         
@@ -164,7 +163,7 @@ def abc_simplifier(good_clauses):
 #removes trivially satisfied clauses if spotted; 
 #also removes dupes within clauses if spotted
 def relabel(good_clauses, a, b):
-    if DEEP_DEBUGGING:
+    if DEBUGGING:
         print('    okay, relabeling', b, 'to', a, file = sys.stderr)
     to_pop = []
     for i in good_clauses:
@@ -175,11 +174,11 @@ def relabel(good_clauses, a, b):
             if -a in c1 or -b in c1:
                 #clause is always satisfied
                 to_pop.append(i)
-                if DEEP_DEBUGGING:
+                if DEBUGGING:
                     print('        c1=', c1, 'so toss it!', file = sys.stderr)
             else:
                 if b in c1:
-                    if DEEP_DEBUGGING:
+                    if DEBUGGING:
                         print('        c1=', c1, 'so remove', b, file = sys.stderr)
                     #removing b is an equivalent clause
                     c1.remove(b)
@@ -188,13 +187,13 @@ def relabel(good_clauses, a, b):
         else:
             if -a in c1:
                 if b in c1:
-                    if DEEP_DEBUGGING:
+                    if DEBUGGING:
                         print('        c1=', c1, 'so toss it!', file = sys.stderr)
                     #clause is always satisfied
                     to_pop.append(i)
                 else:
                     if -b in c1:
-                        if DEEP_DEBUGGING:
+                        if DEBUGGING:
                             print('        c1=', c1, 'so remove', -b, file = sys.stderr)
                         #removing -b is an equivalent clause
                         c1.remove(-b)
@@ -203,12 +202,12 @@ def relabel(good_clauses, a, b):
             else:
                 if b in c1:
                     if -b in c1:
-                        if DEEP_DEBUGGING:
+                        if DEBUGGING:
                             print('        c1=', c1, 'so toss it!', file = sys.stderr)
                         #clause is always satisfied
                         to_pop.append(i)
                     else:
-                        if DEEP_DEBUGGING:
+                        if DEBUGGING:
                             print('        c1=', c1, 'so swap', b, 'with', a, file = sys.stderr)
                         c1.remove(b)
                         c1.append(a)
@@ -216,7 +215,7 @@ def relabel(good_clauses, a, b):
                         good_clauses[i] = c1
                 else:
                     if -b in c1:
-                        if DEEP_DEBUGGING:
+                        if DEBUGGING:
                             print('        c1=', c1, 'so swap', -b, 'with', -a, file = sys.stderr)
                         c1.remove(-b)
                         c1.append(-a)
@@ -242,17 +241,17 @@ def simplify_by_substitutions(good_clauses, dummy_threshold):
                         if c1[0]==-c2[0] and c1[1]==-c2[1]:
                             a = c1[0]
                             b = -c1[1]
-                            if DEEP_DEBUGGING:
+                            if DEBUGGING:
                                 print('at', (i,j),':', c1, c2, file = sys.stderr)
                             if abs(b) >= dummy_threshold:
                                 dud = good_clauses.pop(i)
                                 dud = good_clauses.pop(j)
-                                if DEEP_DEBUGGING:
+                                if DEBUGGING:
                                     print('we dont need either clause now!', file = sys.stderr)
                             else:
                                 #good_clauses[i] = c1
                                 #good_clauses[j] = c2
-                                if DEEP_DEBUGGING:
+                                if DEBUGGING:
                                     print('we need to keep the clauses intact', file = sys.stderr)
                             relabel(good_clauses, a, b)
                             simplify_by_substitutions(good_clauses, dummy_threshold)
@@ -284,7 +283,7 @@ def dummy_shift(good_clauses, dummy_threshold):
     i = has_gaps(dums)
     while i >= 0:
         shifted = True
-        if DEEP_DEBUGGING:
+        if DEBUGGING:
             print('    found a gap:', (dums[i], dums[i+1]), 'in', dums, file = sys.stderr)
         relabel(good_clauses, dums[i]+1, dums[i+1])
         dums[i+1] = dums[i] + 1
@@ -301,22 +300,21 @@ def remove_singletons(good_clauses, dummy_threshold):
                 if i != j:
                     if a in good_clauses[j]:
                         to_pop.append(j)
-                        if DEEP_DEBUGGING:
+                        if DEBUGGING:
                             print(good_clauses[j], 'got popped by', good_clauses[i], file = sys.stderr)
                     if -a in good_clauses[j]:
-                        if DEEP_DEBUGGING:
+                        if DEBUGGING:
                             print(good_clauses[j], 'got shortened by', good_clauses[i], file = sys.stderr)
                         new_clause = good_clauses[j]
                         new_clause.remove(-a)
                         good_clauses[j] = new_clause
             if abs(a) >= dummy_threshold:
                 to_pop.append(i)
-                if DEEP_DEBUGGING:
+                if DEBUGGING:
                     print('at', i, good_clauses[i], 'is a dummy singleton', file = sys.stderr)
             for j in to_pop:
                 dud = good_clauses.pop(j)
-                if DEEP_DEBUGGING:
-                    print('    removed', a,'at', j, 'wow!', file = sys.stderr)
+                print('    removed', a,'at', j, 'wow!', file = sys.stderr)
             remove_singletons(good_clauses, dummy_threshold)
             return True
     return False
@@ -347,14 +345,14 @@ def simplify_clause_list(old_clauses, dummy_threshold):
     
     #keep a dictionary of all good clauses, by their original index
     good_clauses = dict()
-    if DEEP_DEBUGGING:
+    if DEBUGGING:
         print('original clauses:', file = sys.stderr)
     #make sure the clauses are sorted
     for i in range(len(old_clauses)):
         curr_clause = old_clauses[i]
         curr_clause.sort(cmp = lambda x,y: abs(x)-abs(y))
         good_clauses[i] = curr_clause
-        if DEEP_DEBUGGING:
+        if DEBUGGING:
             print(i, curr_clause, file = sys.stderr)
     
     lctr = 0
@@ -362,13 +360,13 @@ def simplify_clause_list(old_clauses, dummy_threshold):
     while progressing:
         progressing = False
         
-        if DEEP_DEBUGGING:
+        if DEBUGGING:
             print('printing nonzeroed clauses...', file = sys.stderr)
             show_zeroed_clauses( good_clauses, [-i for i in range(1,dummy_threshold)] )
         
         
         removed_singles = remove_singletons(good_clauses, dummy_threshold)
-        if DEEP_DEBUGGING and removed_singles:
+        if DEBUGGING and removed_singles:
             print('removed singles!', file = sys.stderr)
         
             print('now only', len(good_clauses), 'clauses!', file = sys.stderr)
@@ -376,7 +374,7 @@ def simplify_clause_list(old_clauses, dummy_threshold):
             show_zeroed_clauses( good_clauses, [-i for i in range(1,dummy_threshold)] )
         
         subbed = simplify_by_substitutions(good_clauses, dummy_threshold)
-        if DEEP_DEBUGGING and subbed:
+        if DEBUGGING and subbed:
             print('subbed!', file = sys.stderr)
         
             print('now only', len(good_clauses), 'clauses!', file = sys.stderr)
@@ -384,7 +382,7 @@ def simplify_clause_list(old_clauses, dummy_threshold):
             show_zeroed_clauses( good_clauses, [-i for i in range(1,dummy_threshold)] )
         
         abc_simplified = abc_simplifier(good_clauses)
-        if DEEP_DEBUGGING and abc_simplified:
+        if DEBUGGING and abc_simplified:
             print('abc simplified!', file = sys.stderr)
 
             print('now only', len(good_clauses), 'clauses!', file = sys.stderr)
@@ -393,11 +391,11 @@ def simplify_clause_list(old_clauses, dummy_threshold):
         
         progressing = subbed or abc_simplified or removed_singles
         lctr += 1 
-        if DEEP_DEBUGGING:
+        if DEBUGGING:
             print('finished', lctr, 'loops!', file = sys.stderr)
         
     shifted = dummy_shift(good_clauses, dummy_threshold)
-    if DEEP_DEBUGGING and shifted:
+    if DEBUGGING and shifted:
         print('shifted!', file = sys.stderr)
     
         print('now only', len(good_clauses), 'clauses!', file = sys.stderr)
@@ -447,7 +445,8 @@ def show_zeroed_clauses(good_clauses, assumed):
             j += 1
         
         if not zeroed and len(reduced) > 0:
-            print(i, reduced, file = sys.stderr)
+            if DEBUGGING:
+                print(i, reduced, file = sys.stderr)
             satisfied = False
     print('satisfied by zero?', satisfied, file = sys.stderr)
     print("", file = sys.stderr)
@@ -484,8 +483,8 @@ def hads_to_graphs(all_columns = True, transpose = True):
     
     emap = dict()
     ectr = 0
-    for b in range(K):
-        for a in range(b):
+    for a in range(K):
+        for b in range(a+1,K):
             ectr += 1
             emap[ectr] = (a,b)
     
@@ -507,7 +506,7 @@ def hads_to_graphs(all_columns = True, transpose = True):
         if DEBUGGING:
             print('the entries of curr line are:', file = sys.stderr)
             for s in curr_line:
-                print(s, file = sys.stderr)
+                print(s)
         
         for s in curr_line[:-1]:
             if DEBUGGING:
@@ -565,30 +564,17 @@ def hads_to_graphs(all_columns = True, transpose = True):
             
             matchings = dict()
             
-            #ectr = 0
-            #
-            #for b in range(K-1):
-            #    ectr += 1
-            #    my_row = [0 for i in range(K-1)]
-            #    my_row[b] = K
-            #    my_row = tuple(my_row)
-            #    matchings[my_row] = [(ectr,0,b)]
-            
             ectr = 0
+            
             for b in range(K-1):
-                ectr += b+1
+                ectr += 1
                 my_row = [0 for i in range(K-1)]
                 my_row[b] = K
                 my_row = tuple(my_row)
-                matchings[my_row] = [(ectr, 0, b+1)]
+                matchings[my_row] = [(ectr,0,b)]
             
-            #for a in range(1,K):
-            #    for b in range(a+1,K):
-            
-            ectr = 0
-            for b in range(1,K):
-                ectr += 1
-                for a in range(1,b):
+            for a in range(1,K):
+                for b in range(a+1,K):
                     if DEBUGGING:
                         print('trying', (a,b), file = sys.stderr)
                     ectr += 1
@@ -630,29 +616,17 @@ def hads_to_graphs(all_columns = True, transpose = True):
                         mults = tuple(mults)
                         
                         if mults in mults_to_clauses:
-                            old_ectr, old_last_elabel, num_new_vars, old_coes_to_inds, old_clauses = mults_to_clauses[mults]
+                            old_ectr, num_new_vars, old_coes_to_inds, old_clauses = mults_to_clauses[mults]
                             
-                            
-                            print('old ectr, old last elabel, num new vars', old_ectr, old_last_elabel, num_new_vars, file = sys.stderr)
-                            print('the coes to indices:', file = sys.stderr)
-                            for coe in coes_to_inds:
-                                print(coe, coes_to_inds[coe], old_coes_to_inds[coe], file = sys.stderr)
-                            print(file = sys.stderr)
-                            
-                            
-                            
-                            
-                            
-                            #must relabel the old indices to match the variables of the new ones
-                            #for each coefficient coe 
+                            #must relabel the old indices to match the new ones
+                            #for each coefficient c 
                             relab = dict()
                             
                             for coe in old_coes_to_inds:
                                 coe_ctr = 0
                                 for old_index in old_coes_to_inds[coe]:
-                                    curr_index = 1+coes_to_inds[coe][coe_ctr]
-                                    relab[1+old_index*(old_index+1)/2] = curr_index * (curr_index-1)/2 + 1   #1+coes_to_inds[coe][coe_ctr]
-                                    relab[-1-old_index*(old_index+1)/2] = -curr_index * (curr_index-1)/2 - 1
+                                    relab[1+old_index] = 1+coes_to_inds[coe][coe_ctr]
+                                    relab[-1-old_index] = -1-coes_to_inds[coe][coe_ctr]
                                     coe_ctr += 1
                             
                             
@@ -660,10 +634,8 @@ def hads_to_graphs(all_columns = True, transpose = True):
                             relab[-old_ectr] = -ectr
                             
                             for i in range(1,1+num_new_vars):
-                                relab[old_last_elabel+i] = i+nvars
-                                relab[-old_last_elabel-i] = -i-nvars
-                            
-                            print('the relabel is', relab, file = sys.stderr)
+                                relab[old_ectr+i] = i+nvars
+                                relab[-old_ectr-i] = -i-nvars
                             
                             for curr_clause in old_clauses:
                                 g.add_clause([relab[k] for k in curr_clause])
@@ -674,12 +646,10 @@ def hads_to_graphs(all_columns = True, transpose = True):
                         else:
                             if DEBUGGING:
                                 print('dealing with', mults,'for the first time...', file = sys.stderr)
-                            cnf = PBEnc.equals( lits = [1 + k*(k-1)/2 for k in range(1,K)] + [ectr], weights = list(my_row)+[-K], bound = 0, encoding = 4 )
-                            last_elabel = max(ectr, (K-1)*(K-2)/2 + 1)
-                            print('the last elabel is', last_elabel, 'which is also', max([1 + k*(k-1)/2 for k in range(1,K)] + [ectr]), file = sys.stderr)
-                            curr_clauses, maxvar = simplify_clause_list(cnf.clauses, last_elabel + 1 )
+                            cnf = PBEnc.equals( lits = range(1,K) + [ectr], weights = list(my_row)+[-K], bound = 0, encoding = 4 )
+                            curr_clauses, maxvar = simplify_clause_list(cnf.clauses, ectr + 1)
                             
-                            num_new_vars = maxvar - last_elabel
+                            num_new_vars = maxvar - ectr
                             
                             if DEBUGGING:
                                 print("", file = sys.stderr)
@@ -688,20 +658,20 @@ def hads_to_graphs(all_columns = True, transpose = True):
                             
                             for curr_clause in curr_clauses:
                                 if DEBUGGING:
-                                    print('relabeling clause', curr_clause, 'with ectr=', ectr,'and', nvars, 'vars', file = sys.stderr)
+                                    print('relabeling clause', c, 'with ectr=', ectr,'and', nvars, 'vars', file = sys.stderr)
                                 new_clause = []
                                 for k in curr_clause:
-                                    if abs(k) <= last_elabel:
+                                    if abs(k) <= ectr:
                                         new_clause.append(k)
                                     else:
                                         if k > 0:
                                             if DEBUGGING:
-                                                print(k, 'is the', k-last_elabel,'th dummy...', 'shift it up by', nvars, file = sys.stderr)
-                                            new_clause.append(k-last_elabel+nvars)
+                                                print(k, 'is the', k-ectr,'th dummy...', 'shift it up by', nvars, file = sys.stderr)
+                                            new_clause.append(k-ectr+nvars)
                                         else:
-                                            new_clause.append(k+last_elabel-nvars)
+                                            new_clause.append(k+ectr-nvars)
                                             if DEBUGGING:
-                                                print(k, 'is the', k+last_elabel,'th dummy...', 'shift it down by', nvars, file = sys.stderr)
+                                                print(k, 'is the', k+ectr,'th dummy...', 'shift it down by', nvars, file = sys.stderr)
                                 if DEBUGGING:
                                     print('    adding', new_clause, file = sys.stderr)
                                 g.add_clause(new_clause)
@@ -709,7 +679,7 @@ def hads_to_graphs(all_columns = True, transpose = True):
                             nvars += num_new_vars
                             nclauses += len(curr_clauses)
                             
-                            mults_to_clauses[mults] = (ectr, last_elabel, num_new_vars, coes_to_inds, curr_clauses)
+                            mults_to_clauses[mults] = (ectr, num_new_vars, coes_to_inds, curr_clauses)
                             
                             if DEBUGGING:
                                 print('now there are', (nvars, nclauses), 'vars,clauses', file=sys.stderr)
@@ -718,22 +688,19 @@ def hads_to_graphs(all_columns = True, transpose = True):
             
             if VERBOSE:
                 print('there are', nvars, 'variables and', nclauses, 'clauses', file=sys.stderr)
-                print('there are actually', g.nof_vars(), 'variables and', g.nof_clauses(), 'clauses', file=sys.stderr)
                 print('trying to find all solutions!',file=sys.stderr)
-            
-            
             
             if True:    #nvars >= 2000:
                 while g.solve():
                     new_sol = g.get_model()
                     sol_ctr += 1
                     
-                    if sol_ctr % 10000 == 0:
+                    if sol_ctr % 1000 == 0:
                         print('   ', sol_ctr, 'found so far...', file = sys.stderr)
                     
                     gctr += 1
-                    #nx.write_graph6(nx.Graph([emap[k] for k in new_sol[:K*(K-1)/2] if k > 0]), sys.stdout, nodes = range(K))
-                    print( str([emap[k] for k in new_sol[:K*(K-1)/2] if k > 0]), file = sys.stdout )
+                    nx.write_graph6(nx.Graph([emap[k] for k in new_sol[:K*(K-1)/2] if k > 0]), sys.stdout, nodes = range(K))
+                    #print( str([emap[k] for k in new_sol[:K*(K-1)/2] if k > 0]), file = sys.stdout )
                     g.add_clause( [-new_sol[j] for j in range(K-1)] )
                 
                 if VERBOSE:
