@@ -5,7 +5,7 @@
 from __future__ import print_function
 
 from src import g_to_g6
-import networkx as nx
+#import networkx as nx
 from numpy import matrix
 
 import sys
@@ -454,15 +454,71 @@ def show_zeroed_clauses(good_clauses, assumed):
 
 
 
-
-#def sol_to_g6(sol):
-#    curr_g6 = ''
-#    curr_int = 0
-#    curr_index = 0
-#    for k in sol:
-#        if k > 0:
-#            curr_int |= 
-
+#assumes K <= 62
+def sol_to_g6(sol):
+    curr_g6 = str(chr(K+63))
+    curr_int = 0
+    curr_index = 5
+    
+    
+    
+    is_bad = False
+    nums = []
+    correct_length = 1
+    
+    if not len(curr_g6) == correct_length:
+        print('not the right length immediately!', curr_g6, file = sys.stderr)
+    
+    
+    for k in sol:
+        if k > 0:
+            curr_int += (1<<curr_index)
+        if curr_index == 0:
+            curr_g6 += str(chr(curr_int+63))
+            
+            
+            
+            
+            correct_length += 1
+            if not len(curr_g6) == correct_length:
+                print('not the right length!', curr_g6, file = sys.stderr)
+    
+            
+            
+            if curr_int+63 > 126:
+                is_bad = True
+            nums.append(curr_int+63)
+            
+            
+            
+            curr_index = 5
+            curr_int = 0
+        else:
+            curr_index -= 1
+    if curr_index < 5:
+        curr_g6 += str(chr(curr_int+63))
+        
+        
+        
+        correct_length += 1
+        if not len(curr_g6) == correct_length:
+            print('not the right length!', curr_g6, file = sys.stderr)
+        
+        if curr_int+63 > 126:
+            is_bad = True
+        nums.append(curr_int+63)
+        #print('lengthened to', curr_g6, 'and done', file = sys.stderr)
+    
+    
+    if is_bad:
+        print('bad!', nums, file = sys.stderr)
+    
+    
+    if not len(curr_g6) == 84:
+        print('not the right length!', curr_g6, file = sys.stderr)
+    
+    return curr_g6
+    
 
 
 
@@ -487,6 +543,18 @@ def hads_to_graphs(all_columns = True, transpose = True):
         for b in range(a+1,K):
             ectr += 1
             emap[ectr] = (a,b)
+            emap[(a,b)] = ectr
+    
+    re_emap = dict()
+    ectr = 0
+    for b in range(K):
+        for a in range(b):
+            ectr += 1
+            #re_emap[(a,b)] = ectr
+            re_emap[ emap[(a,b)] ] = ectr
+            print('relabeled index of', (a,b), 'from', emap[(a,b)], 'to', ectr, file = sys.stderr)
+            
+    #return
     
     if all_columns:
         max_col = K-1
@@ -593,8 +661,8 @@ def hads_to_graphs(all_columns = True, transpose = True):
                         old_ectr = matchings[my_row][0][0]
                         if DEBUGGING:
                             print('the old ectr,ectr=', old_ectr, ectr, file = sys.stderr)
-                        g.add_clause((old_ectr,-ectr))
-                        g.add_clause((-old_ectr,ectr))
+                        g.add_clause((re_emap[old_ectr],-re_emap[ectr]))
+                        g.add_clause((-re_emap[old_ectr],re_emap[ectr]))
                         nclauses += 2
                     
                     else:
@@ -625,13 +693,13 @@ def hads_to_graphs(all_columns = True, transpose = True):
                             for coe in old_coes_to_inds:
                                 coe_ctr = 0
                                 for old_index in old_coes_to_inds[coe]:
-                                    relab[1+old_index] = 1+coes_to_inds[coe][coe_ctr]
-                                    relab[-1-old_index] = -1-coes_to_inds[coe][coe_ctr]
+                                    relab[1+old_index] = re_emap[1+coes_to_inds[coe][coe_ctr]]
+                                    relab[-1-old_index] = -re_emap[1+coes_to_inds[coe][coe_ctr]]
                                     coe_ctr += 1
                             
                             
-                            relab[old_ectr] = ectr
-                            relab[-old_ectr] = -ectr
+                            relab[old_ectr] = re_emap[ectr]
+                            relab[-old_ectr] = -re_emap[ectr]
                             
                             for i in range(1,1+num_new_vars):
                                 relab[old_ectr+i] = i+nvars
@@ -662,7 +730,10 @@ def hads_to_graphs(all_columns = True, transpose = True):
                                 new_clause = []
                                 for k in curr_clause:
                                     if abs(k) <= ectr:
-                                        new_clause.append(k)
+                                        if k > 0:
+                                            new_clause.append(re_emap[k])
+                                        else:
+                                            new_clause.append(-re_emap[-k])
                                     else:
                                         if k > 0:
                                             if DEBUGGING:
@@ -699,9 +770,15 @@ def hads_to_graphs(all_columns = True, transpose = True):
                         print('   ', sol_ctr, 'found so far...', file = sys.stderr)
                     
                     gctr += 1
-                    nx.write_graph6(nx.Graph([emap[k] for k in new_sol[:K*(K-1)/2] if k > 0]), sys.stdout, nodes = range(K))
+                    #nx.write_graph6(nx.Graph([emap[k] for k in new_sol[:K*(K-1)/2] if k > 0]), sys.stdout, nodes = range(K))
                     #print( str([emap[k] for k in new_sol[:K*(K-1)/2] if k > 0]), file = sys.stdout )
-                    g.add_clause( [-new_sol[j] for j in range(K-1)] )
+                    g.add_clause( [-new_sol[1+j*(j+1)/2] for j in range(K-1)] )
+                    #print([k for k in new_sol[:K*(K-1)/2] if k > 0], file = sys.stderr)
+                    #print('which is really:', file = sys.stderr)
+                    #print([re_emap[emap[k]] for k in new_sol[:K*(K-1)/2] if k > 0], file = sys.stderr)
+                    #print('got written as\n', file = sys.stderr)
+                    print(sol_to_g6(new_sol[:K*(K-1)/2]), file = sys.stdout)
+                    #g.add_clause( [-new_sol[j] for j in range(K-1)] )
                 
                 if VERBOSE:
                     print(sol_ctr, 'solutions found!', file = sys.stderr)
